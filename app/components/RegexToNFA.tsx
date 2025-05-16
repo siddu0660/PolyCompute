@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { NFA, NFAData, State, Transition } from "./NFATypes";
 import { useDropzone } from "react-dropzone";
+import NFADiagram from "./NFADiagram";
 
 let globalStateCounter = 0;
 function getNextStateId() {
@@ -21,6 +22,7 @@ type NodeType = {
   isFinal: boolean;
   label: string;
 };
+
 type EdgeType = {
   from: string;
   to: string;
@@ -69,43 +71,45 @@ export default function RegexToNFA() {
   const createBasicNFA = (symbol: string): NFA => {
     const s0 = getNextStateId();
     const s1 = getNextStateId();
-    const states: State[] = [
-      { id: s0, isInitial: true, isFinal: false, label: s0 },
-      { id: s1, isInitial: false, isFinal: true, label: s1 },
-    ];
-    const transitions: Transition[] = [{ from: s0, to: s1, symbol }];
-    return { states, transitions, alphabet: [symbol] };
+    return {
+      states: [
+        { id: s0, isInitial: true, isFinal: false, label: s0 },
+        { id: s1, isInitial: false, isFinal: true, label: s1 },
+      ],
+      transitions: [{ from: s0, to: s1, symbol }],
+      alphabet: [symbol],
+    };
+  };
+
+  const createEmptyNFA = (): NFA => {
+    const s0 = getNextStateId();
+    return {
+      states: [{ id: s0, isInitial: true, isFinal: true, label: s0 }],
+      transitions: [],
+      alphabet: [],
+    };
   };
 
   const unionNFAs = (nfa1: NFA, nfa2: NFA): NFA => {
-    const start = getNextStateId();
-    const end = getNextStateId();
-    // Mark all as not initial/final
+    const s0 = getNextStateId();
+    const s1 = getNextStateId();
     const states = [
-      { id: start, isInitial: true, isFinal: false, label: start },
+      { id: s0, isInitial: true, isFinal: false, label: s0 },
       ...nfa1.states.map((s) => ({ ...s, isInitial: false, isFinal: false })),
       ...nfa2.states.map((s) => ({ ...s, isInitial: false, isFinal: false })),
-      { id: end, isInitial: false, isFinal: true, label: end },
+      { id: s1, isInitial: false, isFinal: true, label: s1 },
     ];
-    const transitions: Transition[] = [
-      {
-        from: start,
-        to: nfa1.states.find((s) => s.isInitial)?.id || "",
-        symbol: "ε",
-      },
-      {
-        from: start,
-        to: nfa2.states.find((s) => s.isInitial)?.id || "",
-        symbol: "ε",
-      },
+    const nfa1Initial = nfa1.states.find((s) => s.isInitial)!.id;
+    const nfa2Initial = nfa2.states.find((s) => s.isInitial)!.id;
+    const nfa1Finals = nfa1.states.filter((s) => s.isFinal).map((s) => s.id);
+    const nfa2Finals = nfa2.states.filter((s) => s.isFinal).map((s) => s.id);
+    const transitions = [
+      { from: s0, to: nfa1Initial, symbol: "ε" },
+      { from: s0, to: nfa2Initial, symbol: "ε" },
       ...nfa1.transitions,
       ...nfa2.transitions,
-      ...nfa1.states
-        .filter((s) => s.isFinal)
-        .map((s) => ({ from: s.id, to: end, symbol: "ε" })),
-      ...nfa2.states
-        .filter((s) => s.isFinal)
-        .map((s) => ({ from: s.id, to: end, symbol: "ε" })),
+      ...nfa1Finals.map((fid) => ({ from: fid, to: s1, symbol: "ε" })),
+      ...nfa2Finals.map((fid) => ({ from: fid, to: s1, symbol: "ε" })),
     ];
     return {
       states,
@@ -115,27 +119,28 @@ export default function RegexToNFA() {
   };
 
   const concatenateNFAs = (nfa1: NFA, nfa2: NFA): NFA => {
-    // Keep state IDs as they are
+    const nfa1Finals = nfa1.states.filter((s) => s.isFinal);
+    const nfa2Initial = nfa2.states.find((s) => s.isInitial);
     const states = [
       ...nfa1.states.map((s) => ({ ...s, isFinal: false })),
       ...nfa2.states.map((s) => ({ ...s, isInitial: false })),
     ];
-
-    // Get the initial state of nfa2
-    const nfa2Initial = nfa2.states.find((s) => s.isInitial)?.id || "";
-
-    const transitions: Transition[] = [
+    const transitions = [
       ...nfa1.transitions,
       ...nfa2.transitions,
-      ...nfa1.states
-        .filter((s) => s.isFinal)
-        .map((s) => ({
-          from: s.id,
-          to: nfa2Initial,
-          symbol: "ε",
-        })),
+      ...nfa1Finals.map((s) => ({
+        from: s.id,
+        to: nfa2Initial!.id,
+        symbol: "ε",
+      })),
     ];
-
+    for (const s of states) {
+      if (nfa2.states.find((st) => st.id === s.id)?.isFinal) s.isFinal = true;
+    }
+    for (const s of states) {
+      if (nfa1.states.find((st) => st.id === s.id)?.isInitial)
+        s.isInitial = true;
+    }
     return {
       states,
       transitions,
@@ -144,74 +149,37 @@ export default function RegexToNFA() {
   };
 
   const kleeneStarNFA = (nfa: NFA): NFA => {
-    const start = getNextStateId();
-    const end = getNextStateId();
-    const nfaInitial = nfa.states.find((s) => s.isInitial)?.id || "";
-
+    const s0 = getNextStateId();
     const states = [
-      { id: start, isInitial: true, isFinal: false, label: start },
       ...nfa.states.map((s) => ({ ...s, isInitial: false, isFinal: false })),
-      { id: end, isInitial: false, isFinal: true, label: end },
+      { id: s0, isInitial: true, isFinal: true, label: s0 },
     ];
-
-    const transitions: Transition[] = [
-      { from: start, to: nfaInitial, symbol: "ε" },
-      { from: start, to: end, symbol: "ε" },
+    const nfaInitial = nfa.states.find((s) => s.isInitial)!.id;
+    const nfaFinals = nfa.states.filter((s) => s.isFinal).map((s) => s.id);
+    const transitions = [
+      { from: s0, to: nfaInitial, symbol: "ε" },
       ...nfa.transitions,
-      ...nfa.states
-        .filter((s) => s.isFinal)
-        .map((s) => ({ from: s.id, to: nfaInitial, symbol: "ε" })),
-      ...nfa.states
-        .filter((s) => s.isFinal)
-        .map((s) => ({ from: s.id, to: end, symbol: "ε" })),
+      ...nfaFinals.map((fid) => ({ from: fid, to: nfaInitial, symbol: "ε" })),
+      ...nfaFinals.map((fid) => ({ from: fid, to: s0, symbol: "ε" })),
     ];
-
-    return { states, transitions, alphabet: nfa.alphabet };
+    return {
+      states,
+      transitions,
+      alphabet: nfa.alphabet,
+    };
   };
 
-  const parseRegexToNFA = (regex: string): NFA => {
-    const concatExplicit = makeExplicitConcatenation(regex);
-    const postfix = infixToPostfix(concatExplicit);
-    const stack: NFA[] = [];
+  const isOperator = (c: string): boolean => {
+    return c === "|" || c === "*" || c === ".";
+  };
 
-    for (let i = 0; i < postfix.length; i++) {
-      const token = postfix[i];
-
-      if (token === "*") {
-        if (stack.length < 1)
-          throw new Error(
-            "Invalid regex: insufficient operand for Kleene star"
-          );
-        const operand = stack.pop()!;
-        stack.push(kleeneStarNFA(operand));
-      } else if (token === "|") {
-        if (stack.length < 2)
-          throw new Error("Invalid regex: insufficient operands for union");
-        const right = stack.pop()!;
-        const left = stack.pop()!;
-        stack.push(unionNFAs(left, right));
-      } else if (token === ".") {
-        if (stack.length < 2)
-          throw new Error(
-            "Invalid regex: insufficient operands for concatenation"
-          );
-        const right = stack.pop()!;
-        const left = stack.pop()!;
-        stack.push(concatenateNFAs(left, right));
-      } else {
-        // Token is a symbol
-        stack.push(createBasicNFA(token));
-      }
-    }
-
-    if (stack.length !== 1) {
-      throw new Error("Invalid regex: parsing error");
-    }
-
-    return stack[0];
+  const isAlphaNumeric = (c: string): boolean => {
+    return /[a-zA-Z0-9]/.test(c);
   };
 
   const makeExplicitConcatenation = (regex: string): string => {
+    if (regex.length === 0) return "";
+
     let result = "";
 
     for (let i = 0; i < regex.length; i++) {
@@ -220,13 +188,21 @@ export default function RegexToNFA() {
 
       if (i < regex.length - 1) {
         const next = regex[i + 1];
+
         // Add explicit concatenation operator if needed
         if (
-          current !== "(" &&
-          current !== "|" &&
-          next !== ")" &&
-          next !== "|" &&
-          next !== "*"
+          // Current is not an opening paren or operator
+          (current !== "(" &&
+            current !== "|" &&
+            current !== "." &&
+            // Next is not a closing paren, operator (except Kleene star)
+            next !== ")" &&
+            next !== "|" &&
+            next !== "*" &&
+            next !== ".") ||
+          // Special case: after Kleene star or closing paren followed by letter/digit/opening paren
+          ((current === "*" || current === ")") &&
+            (isAlphaNumeric(next) || next === "("))
         ) {
           result += ".";
         }
@@ -281,60 +257,158 @@ export default function RegexToNFA() {
     return output;
   };
 
-  const removeEpsilonTransitions = (nfa: NFA): NFA => {
-    const epsilon = 'ε';
-    // 1. Compute epsilon-closure for each state
-    const closure: Record<string, Set<string>> = {};
-    for (const state of nfa.states) {
-      const stack: string[] = [state.id];
-      const visited = new Set<string>([state.id]);
-      while (stack.length) {
-        const curr = stack.pop()!;
-        for (const t of nfa.transitions) {
-          if (t.from === curr && t.symbol === epsilon && !visited.has(t.to)) {
-            visited.add(t.to);
-            stack.push(t.to);
+  // Compute epsilon closure of a state
+  const computeEpsilonClosure = (stateId: string, nfa: NFA): Set<string> => {
+    const epsilon = "ε";
+    const closure = new Set<string>([stateId]);
+    const stack = [stateId];
+
+    while (stack.length > 0) {
+      const currentId = stack.pop()!;
+
+      for (const transition of nfa.transitions) {
+        if (transition.from === currentId && transition.symbol === epsilon) {
+          if (!closure.has(transition.to)) {
+            closure.add(transition.to);
+            stack.push(transition.to);
           }
         }
       }
-      closure[state.id] = visited;
+    }
+
+    return closure;
+  };
+
+  const removeEpsilonTransitions = (nfa: NFA): NFA => {
+    const epsilon = "ε";
+    // 1. Compute epsilon-closure for each state
+    const closures: Map<string, Set<string>> = new Map();
+
+    for (const state of nfa.states) {
+      closures.set(state.id, computeEpsilonClosure(state.id, nfa));
     }
 
     // 2. Build new transitions (excluding epsilon)
     const newTransitions: Transition[] = [];
+    const transitionMap = new Map<string, boolean>(); // To track unique transitions
+
     for (const state of nfa.states) {
-      const targets = closure[state.id];
-      for (const target of targets) {
-        for (const t of nfa.transitions) {
-          if (t.from === target && t.symbol !== epsilon) {
-            newTransitions.push({ from: state.id, to: t.to, symbol: t.symbol });
+      // Get all states reachable via epsilon
+      const epsilonReachable = closures.get(state.id)!;
+
+      // For each state reachable via epsilon
+      for (const reachableId of epsilonReachable) {
+        // Find all non-epsilon transitions from this reachable state
+        for (const transition of nfa.transitions) {
+          if (
+            transition.from === reachableId &&
+            transition.symbol !== epsilon
+          ) {
+            // For each non-epsilon transition, compute epsilon closure of destination
+            const destClosure = closures.get(transition.to)!;
+
+            // Add transitions from original state to all states in destination closure
+            for (const destState of destClosure) {
+              const transitionKey = `${state.id}|${destState}|${transition.symbol}`;
+
+              if (!transitionMap.has(transitionKey)) {
+                newTransitions.push({
+                  from: state.id,
+                  to: destState,
+                  symbol: transition.symbol,
+                });
+                transitionMap.set(transitionKey, true);
+              }
+            }
           }
         }
       }
     }
 
-    // 3. Mark state as final if any in its closure is final
-    const finalStates = new Set<string>(
-      nfa.states.filter((s: State) => s.isFinal).map((s: State) => s.id)
-    );
-    const newStates: State[] = nfa.states.map((s: State) => ({
-      ...s,
-      isFinal: Array.from(closure[s.id]).some(id => finalStates.has(id)),
-    }));
+    // 3. Update final states
+    const newStates = nfa.states.map((state) => {
+      const epsilonReachable = closures.get(state.id)!;
+      const isFinal = Array.from(epsilonReachable).some(
+        (id) => nfa.states.find((s) => s.id === id)?.isFinal
+      );
 
-    // 4. Remove duplicate transitions
-    const uniqueTransitions: Transition[] = Array.from(
-      new Set(newTransitions.map(t => `${t.from}|${t.to}|${t.symbol}`))
-    ).map(str => {
-      const [from, to, symbol] = str.split('|');
-      return { from, to, symbol };
+      return {
+        ...state,
+        isFinal: isFinal || state.isFinal,
+      };
     });
+
+    // 4. Determine alphabet (excluding epsilon)
+    const newAlphabet = [
+      ...new Set(
+        nfa.transitions.filter((t) => t.symbol !== epsilon).map((t) => t.symbol)
+      ),
+    ];
 
     return {
       states: newStates,
-      transitions: uniqueTransitions,
-      alphabet: nfa.alphabet,
+      transitions: newTransitions,
+      alphabet: newAlphabet,
     };
+  };
+
+  const parseRegexToNFA = (regex: string): NFA => {
+    if (regex === "ε") {
+      // NFA for empty string: initial is also final, no transitions
+      const s0 = getNextStateId();
+      return {
+        states: [
+          { id: s0, isInitial: true, isFinal: true, label: s0 },
+        ],
+        transitions: [],
+        alphabet: [],
+      };
+    }
+
+    // Handle empty regex case
+    if (regex.trim() === "") {
+      return createEmptyNFA();
+    }
+
+    const concatExplicit = makeExplicitConcatenation(regex);
+    const postfix = infixToPostfix(concatExplicit);
+    const stack: NFA[] = [];
+
+    for (let i = 0; i < postfix.length; i++) {
+      const token = postfix[i];
+
+      if (token === "*") {
+        if (stack.length < 1)
+          throw new Error(
+            "Invalid regex: insufficient operand for Kleene star"
+          );
+        const operand = stack.pop()!;
+        stack.push(kleeneStarNFA(operand));
+      } else if (token === "|") {
+        if (stack.length < 2)
+          throw new Error("Invalid regex: insufficient operands for union");
+        const right = stack.pop()!;
+        const left = stack.pop()!;
+        stack.push(unionNFAs(left, right));
+      } else if (token === ".") {
+        if (stack.length < 2)
+          throw new Error(
+            "Invalid regex: insufficient operands for concatenation"
+          );
+        const right = stack.pop()!;
+        const left = stack.pop()!;
+        stack.push(concatenateNFAs(left, right));
+      } else {
+        // Token is a symbol
+        stack.push(createBasicNFA(token));
+      }
+    }
+
+    if (stack.length !== 1) {
+      throw new Error("Invalid regex: parsing error");
+    }
+
+    return stack[0];
   };
 
   const convertRegexToNFA = () => {
@@ -346,8 +420,7 @@ export default function RegexToNFA() {
     try {
       resetStateCounter();
       const parsedNFA: NFA = parseRegexToNFA(regex);
-      const nfaNoEpsilon: NFA = removeEpsilonTransitions(parsedNFA);
-      setNFA(nfaNoEpsilon);
+      setNFA(parsedNFA);
       setError("");
     } catch (err) {
       setError(
@@ -387,7 +460,12 @@ export default function RegexToNFA() {
     if (!nfa) return [];
 
     const table = [];
-    const allSymbols = [...new Set([...nfa.alphabet, "ε"])];
+    const allSymbols = [
+      ...new Set([
+        ...nfa.alphabet,
+        ...(nfa.transitions.some((t) => t.symbol === "ε") ? ["ε"] : []),
+      ]),
+    ];
 
     for (const state of nfa.states) {
       for (const symbol of allSymbols) {
@@ -428,6 +506,13 @@ export default function RegexToNFA() {
                 placeholder="Enter regex (e.g., a|b*)"
               />
               <button
+                onClick={() => setRegex(regex + "ε")}
+                className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                title="Insert epsilon (ε)"
+              >
+                ε
+              </button>
+              <button
                 onClick={convertRegexToNFA}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
@@ -435,8 +520,7 @@ export default function RegexToNFA() {
               </button>
             </div>
             <p className="mt-2 text-sm text-gray-400">
-              Supported operations: concatenation (ab), union (a|b), Kleene star
-              (a*)
+              Supported operations: concatenation (ab), union (a|b), Kleene star (a*), <span className="font-mono">ε</span> (epsilon for empty string)
             </p>
           </div>
 
@@ -484,6 +568,12 @@ export default function RegexToNFA() {
             </button>
           </div>
           <div className="space-y-6">
+            {/* NFA Diagram */}
+            <div className="mt-8">
+              <h4 className="text-lg font-medium mb-4">NFA Diagram</h4>
+              <NFADiagram nfa={nfa} />
+            </div>
+
             {/* Improved State Transition Table */}
             <div className="mb-6 bg-gray-900 p-4 rounded-lg border border-gray-700">
               <h4 className="text-lg font-medium mb-4">
