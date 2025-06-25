@@ -13,6 +13,16 @@ interface NFADiagramProps {
   activeTransitions?: { from: string; to: string; symbol: string }[];
 }
 
+function groupTransitions(transitions: { from: string; to: string; symbol: string }[]) {
+  const grouped: { [key: string]: string[] } = {};
+  transitions.forEach(({ from, to, symbol }) => {
+    const key = `${from}->${to}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(symbol);
+  });
+  return grouped;
+}
+
 function nfaToDot(nfa: NFA, activeStates: string[] = [], activeTransitions: { from: string; to: string; symbol: string }[] = []): string {
   // Compose DOT string for Graphviz
   let dot = 'digraph NFA {\n';
@@ -48,10 +58,11 @@ function nfaToDot(nfa: NFA, activeStates: string[] = [], activeTransitions: { fr
   }
 
   // Transitions
-  for (const t of nfa.transitions) {
-    // Highlight if in activeTransitions
-    const isActive = activeTransitions.some(at => at.from === t.from && at.to === t.to && at.symbol === t.symbol);
-    dot += `  ${t.from} -> ${t.to} [label="${t.symbol}", fontname="Arial", fontsize=16, color="${isActive ? '#2563eb' : '#333'}", fontcolor="${isActive ? '#2563eb' : '#333'}", penwidth=${isActive ? 3.5 : 2.2}];\n`;
+  const grouped = groupTransitions(nfa.transitions);
+  for (const [key, symbols] of Object.entries(grouped)) {
+    const [from, to] = key.split("->");
+    const isActive = activeTransitions.some(at => at.from === from && at.to === to && symbols.includes(at.symbol));
+    dot += `  ${from} -> ${to} [label="${symbols.join(", ")}", fontname="Arial", fontsize=16, color="${isActive ? '#2563eb' : '#333'}", fontcolor="${isActive ? '#2563eb' : '#333'}", penwidth=${isActive ? 3.5 : 2.2}];\n`;
   }
 
   dot += '}';
@@ -86,4 +97,4 @@ export default function NFADiagram({ nfa, activeStates = [], activeTransitions =
       </div>
     </>
   );
-} 
+}

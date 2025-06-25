@@ -1,5 +1,6 @@
 import { useState } from "react";
 import NFASimulator from "./NFASimulator";
+import NfaToDfaConverter from "./NFAtoDFA";
 import Link from "next/link";
 
 const BackButton = ({ onClick }: { onClick: () => void }) => (
@@ -52,10 +53,7 @@ export default function NfaTools() {
     return (
       <div>
         <BackButton onClick={() => setSelectedTool(null)} />
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 text-gray-300">
-          <h3 className="text-xl font-semibold mb-3">NFA to DFA Converter</h3>
-          <p>Convert your NFA to an equivalent DFA (coming soon).</p>
-        </div>
+        <NfaToDfaConverter />
       </div>
     );
   }
