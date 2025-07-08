@@ -1,6 +1,7 @@
 import { useState } from "react";
 import NFASimulator from "./NFASimulator";
 import NfaToDfaConverter from "./NFAtoDFA";
+import NFAConstructor from "./NFAConstructor";
 import Link from "next/link";
 
 const BackButton = ({ onClick }: { onClick: () => void }) => (
@@ -41,10 +42,7 @@ export default function NfaTools() {
     return (
       <div>
         <BackButton onClick={() => setSelectedTool(null)} />
-        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 text-gray-300">
-          <h3 className="text-xl font-semibold mb-3">NFA Constructor</h3>
-          <p>Construct a NFA (coming soon).</p>
-        </div>
+        <NFAConstructor />
       </div>
     );
   }
@@ -92,7 +90,7 @@ export default function NfaTools() {
         onClick={() => setSelectedTool("create")}
       >
         <h3 className="text-xl font-semibold mb-3">NFA Constructor</h3>
-        <p className="text-gray-300 mb-4">Construct a NFA (coming soon).</p>
+        <p className="text-gray-300 mb-4">Construct a NFA.</p>
         <div className="flex items-center text-blue-400">
           <span>Open Tool</span>
           <svg
@@ -117,7 +115,7 @@ export default function NfaTools() {
       >
         <h3 className="text-xl font-semibold mb-3">NFA to DFA</h3>
         <p className="text-gray-300 mb-4">
-          Convert your NFA to an equivalent DFA (coming soon).
+          Convert your NFA to an equivalent DFA.
         </p>
         <div className="flex items-center text-blue-400">
           <span>Open Tool</span>
