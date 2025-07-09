@@ -1,11 +1,7 @@
 "use client";
-import Link from "next/link";
-import { useState } from "react";
 import NfaTools from '../components/NfaTools';
 
-export default function NFAPage() {
-  const [showSimulator, setShowSimulator] = useState(false);
-
+export default function FAPage() {
   return (
     <main className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">

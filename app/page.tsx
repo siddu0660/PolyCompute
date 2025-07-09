@@ -16,19 +16,11 @@ export default function Home() {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* NFA Card */}
-          <Link href="/nfa" className="group">
+          {/* FA Card */}
+          <Link href="/fa" className="group">
             <div className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-colors duration-300 h-full">
-              <h2 className="text-2xl font-bold mb-4 text-blue-400 group-hover:text-blue-300">NFA Analysis</h2>
-              <p className="text-gray-300">Analyze and visualize Non-deterministic Finite Automata.</p>
-            </div>
-          </Link>
-
-          {/* DFA Card */}
-          <Link href="/dfa" className="group">
-            <div className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-colors duration-300 h-full">
-              <h2 className="text-2xl font-bold mb-4 text-green-400 group-hover:text-green-300">DFA Analysis</h2>
-              <p className="text-gray-300">Work with Deterministic Finite Automata.</p>
+              <h2 className="text-2xl font-bold mb-4 text-blue-400 group-hover:text-blue-300">Finite Automata Analysis</h2>
+              <p className="text-gray-300">Analyze and visualize Finite Automata.</p>
             </div>
           </Link>
 

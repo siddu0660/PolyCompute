@@ -26,8 +26,7 @@ export default function RootLayout({
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex space-x-6">
-              <Link href="/nfa" className="hover:text-blue-400 transition-colors">NFA</Link>
-              <Link href="/dfa" className="hover:text-blue-400 transition-colors">DFA</Link>
+              <Link href="/fa" className="hover:text-blue-400 transition-colors">Finite Automata</Link>
               <Link href="/pda" className="hover:text-blue-400 transition-colors">PDA</Link>
               <Link href="/cfg" className="hover:text-blue-400 transition-colors">CFG</Link>
               <Link href="/regex" className="hover:text-blue-400 transition-colors">Regex</Link>

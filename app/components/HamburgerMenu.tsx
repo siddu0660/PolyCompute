@@ -36,8 +36,7 @@ export default function HamburgerMenu() {
         <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-800 shadow-lg md:hidden z-50">
           <div className="py-2">
             <button onClick={() => handleLinkClick('/')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700 border-b border-gray-700">Home</button>
-            <button onClick={() => handleLinkClick('/nfa')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">NFA</button>
-            <button onClick={() => handleLinkClick('/dfa')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">DFA</button>
+            <button onClick={() => handleLinkClick('/fa')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Finite Automata</button>
             <button onClick={() => handleLinkClick('/pda')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">PDA</button>
             <button onClick={() => handleLinkClick('/cfg')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">CFG</button>
             <button onClick={() => handleLinkClick('/regex')} className="w-full text-left px-4 py-2 text-white hover:bg-gray-700">Regex</button>
